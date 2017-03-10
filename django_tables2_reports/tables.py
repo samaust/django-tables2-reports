@@ -118,8 +118,8 @@ class TableReport(tables.Table):
 
     @_with_exclude_from_report
     def as_csv(self, request):
-        response = HttpResponse()
-        csv_writer = UnicodeWriter(response, encoding=settings.DEFAULT_CHARSET)
+        content = HttpResponse()
+        csv_writer = UnicodeWriter(content, encoding=settings.DEFAULT_CHARSET)
         csv_header = [column.header for column in self.columns]
         csv_writer.writerow(csv_header)
         for row in self.rows:
@@ -133,6 +133,29 @@ class TableReport(tables.Table):
                     cell = unicode(cell)
                 csv_row.append(cell)
             csv_writer.writerow(csv_row)
+        style = HttpResponse()
+        csv_writer = UnicodeWriter(style, encoding=settings.DEFAULT_CHARSET)
+        csv_header = [column.header for column in self.columns]
+        csv_writer.writerow(csv_header)
+        for row in self.rows:
+            csv_row = []
+            for column, cell in row.items():
+                column_name = u'{}_color'.format(column)
+                if isinstance(cell, string):
+                    # if cell is not a string strip_tags(cell) get an
+                    # error in django 1.6
+                    try:
+                        cell = strip_tags(row.record[column_name])
+                    except KeyError:
+                        cell = u""
+                else:
+                    try:
+                        cell = getattr(row.record[column_name])
+                    except KeyError:
+                        cell = u""
+                csv_row.append(cell)
+            csv_writer.writerow(csv_row)
+        response = {'content': content, 'style': style}
         return response
 
     @_with_exclude_from_report
